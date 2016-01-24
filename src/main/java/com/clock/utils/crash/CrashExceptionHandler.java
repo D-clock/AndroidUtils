@@ -53,17 +53,16 @@ public class CrashExceptionHandler implements Thread.UncaughtExceptionHandler {
      */
     private File mCrashInfoFolder;
     /**
-     * 是否向远程服务器发送错误信息
+     * 向远程服务器发送错误信息
      */
-    private boolean mReportToServer = false;
+    private CrashExceptionRemoteReport mCrashExceptionRemoteReport;
 
     /**
      * @param context
      * @param appMainFolderName   app程序主目录名，配置后位于SD卡一级目录下
      * @param crashInfoFolderName 闪退日志保存目录名，配置后位于 appMainFolderName 配置的一级目录下
-     * @param reportToServer      是否向服务器发送奔溃信息
      */
-    public CrashExceptionHandler(Context context, String appMainFolderName, String crashInfoFolderName, boolean reportToServer) {
+    public CrashExceptionHandler(Context context, String appMainFolderName, String crashInfoFolderName) {
         this.mApplicationContext = context.getApplicationContext();
         if (!TextUtils.isEmpty(appMainFolderName)) {
             this.mAppMainFolder = new File(Environment.getExternalStorageDirectory(), appMainFolderName);
@@ -75,7 +74,6 @@ public class CrashExceptionHandler implements Thread.UncaughtExceptionHandler {
         } else {
             this.mCrashInfoFolder = new File(mAppMainFolder, DEFAULT_CRASH_FOLDER_NAME);
         }
-        mReportToServer = reportToServer;
     }
 
     @Override
@@ -92,6 +90,15 @@ public class CrashExceptionHandler implements Thread.UncaughtExceptionHandler {
     }
 
     /**
+     * 配置远程传回log到服务器的设置
+     *
+     * @param crashExceptionRemoteReport
+     */
+    public void configRemoteReport(CrashExceptionRemoteReport crashExceptionRemoteReport) {
+        this.mCrashExceptionRemoteReport = crashExceptionRemoteReport;
+    }
+
+    /**
      * 处理异常
      *
      * @param ex
@@ -101,9 +108,8 @@ public class CrashExceptionHandler implements Thread.UncaughtExceptionHandler {
             return;
         } else {
             saveCrashInfoToFile(ex);
-            if (mReportToServer) {
-                sendCrashInfoToServer(ex);
-            }
+            sendCrashInfoToServer(ex);
+
             //使用Toast来显示异常信息
             new Thread() {
                 @Override
@@ -169,6 +175,20 @@ public class CrashExceptionHandler implements Thread.UncaughtExceptionHandler {
      * @param ex
      */
     private void sendCrashInfoToServer(Throwable ex) {
+        if (mCrashExceptionRemoteReport != null) {
+            mCrashExceptionRemoteReport.onCrash(ex);
+        }
+    }
 
+    /**
+     * 闪退日志远程奔溃接口，主要考虑不同app下，把log回传给服务器的方式不一样，所以此处留一个对外开放的接口
+     */
+    public static interface CrashExceptionRemoteReport {
+        /**
+         * 当闪退发生时，回调此接口函数
+         *
+         * @param ex
+         */
+        public void onCrash(Throwable ex);
     }
 }
