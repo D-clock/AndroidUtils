@@ -6,18 +6,28 @@ import android.os.Looper;
 import android.text.TextUtils;
 import android.widget.Toast;
 
+import com.clock.utils.common.SystemUtils;
+
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
+import java.io.RandomAccessFile;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 
 /**
  * app奔溃异常处理器
  * <p/>
- * 使用此类需要在AndroidManifest.xml配置读写SD卡的权限
+ * 使用此类需要在AndroidManifest.xml配置以下权限
+ * <p/>
+ * <bold>android.permission.READ_EXTERNAL_STORAGE</bold>
+ * <p/>
+ * <bold>android.permission.WRITE_EXTERNAL_STORAGE</bold>
+ * <p/>
+ * <bold>android.permission.READ_PHONE_STATE</bold>
+ * <p/>
  * Created by Clock on 2016/1/24.
  */
 public class CrashExceptionHandler implements Thread.UncaughtExceptionHandler {
@@ -79,7 +89,6 @@ public class CrashExceptionHandler implements Thread.UncaughtExceptionHandler {
         }
         //杀死进程
         android.os.Process.killProcess(android.os.Process.myPid());
-        //System.exit(1);
     }
 
     /**
@@ -127,10 +136,23 @@ public class CrashExceptionHandler implements Thread.UncaughtExceptionHandler {
                 }
                 String timeStampString = DATE_FORMAT.format(new Date());//当先的时间格式化
                 String crashLogFileName = timeStampString + ".log";
-                File crashInfoFile = new File(mCrashInfoFolder, crashLogFileName);
-                crashInfoFile.createNewFile();
-                PrintWriter pw = new PrintWriter(new OutputStreamWriter(new FileOutputStream(crashInfoFile.getAbsolutePath())), true);
-                ex.printStackTrace(pw);
+                File crashLogFile = new File(mCrashInfoFolder, crashLogFileName);
+                crashLogFile.createNewFile();
+
+                //记录闪退环境的信息
+                RandomAccessFile randomAccessFile = new RandomAccessFile(crashLogFile, "rw");
+                randomAccessFile.writeChars("------------Crash Environment Info------------" + "\n");
+                randomAccessFile.writeChars("------------Manufacture: " + SystemUtils.getDeviceManufacture() + "------------" + "\n");
+                randomAccessFile.writeChars("------------DeviceName: " + SystemUtils.getDeviceName() + "------------" + "\n");
+                randomAccessFile.writeChars("------------SystemVersion: " + SystemUtils.getSystemVersion() + "------------" + "\n");
+                randomAccessFile.writeChars("------------DeviceIMEI: " + SystemUtils.getDeviceIMEI(mApplicationContext) + "------------" + "\n");
+                randomAccessFile.writeChars("------------AppVersion: " + SystemUtils.getAppVersion(mApplicationContext) + "------------" + "\n");
+                randomAccessFile.writeChars("------------Crash Environment Info------------" + "\n");
+                randomAccessFile.writeChars("\n");
+                randomAccessFile.close();
+
+                PrintWriter pw = new PrintWriter(new OutputStreamWriter(new FileOutputStream(crashLogFile.getAbsolutePath(), true)), true);
+                ex.printStackTrace(pw);//写入奔溃的日志信息
                 pw.close();
             } catch (IOException e) {
                 e.printStackTrace();
