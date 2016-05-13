@@ -26,7 +26,7 @@ public class BitmapUtils {
      * @param path 图片绝对路径
      * @return 图片的旋转角度
      */
-    private int getBitmapDegree(String path) {
+    public static int getBitmapDegree(String path) {
         int degree = 0;
         try {
             // 从指定路径下读取图片，并获取其EXIF信息
@@ -63,7 +63,9 @@ public class BitmapUtils {
         matrix.postRotate(degree);
         // 将原始图片按照旋转矩阵进行旋转，并得到新的图片
         Bitmap newBitmap = Bitmap.createBitmap(bitmap, 0, 0, bitmap.getWidth(), bitmap.getHeight(), matrix, true);
-        bitmap.recycle();
+        if (bitmap != null && !bitmap.isRecycled()) {
+            bitmap.recycle();
+        }
         return newBitmap;
     }
 
