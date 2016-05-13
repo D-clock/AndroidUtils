@@ -6,6 +6,7 @@ import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
+import android.os.Environment;
 import android.provider.Settings;
 import android.telephony.TelephonyManager;
 import android.text.TextUtils;
@@ -90,5 +91,14 @@ public class SystemUtils {
             return false;
         }
         return true;
+    }
+
+    /**
+     * SD卡是否挂载
+     *
+     * @return
+     */
+    public static boolean mountedSdCard() {
+        return Environment.getExternalStorageState().equals(Environment.MEDIA_MOUNTED);
     }
 }

@@ -5,7 +5,9 @@ import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Matrix;
 import android.media.ExifInterface;
+import android.text.TextUtils;
 
+import java.io.File;
 import java.io.FileDescriptor;
 import java.io.IOException;
 
@@ -14,6 +16,9 @@ import java.io.IOException;
  * Created by Clock on 2015/12/31.
  */
 public class BitmapUtils {
+
+    public final static String JPG_SUFFIX = ".jpg";
+    public final static String TEMP_FILE_NAME = "temp";
 
     /**
      * 获取图片的旋转角度
@@ -63,6 +68,48 @@ public class BitmapUtils {
     }
 
     /**
+     * 压缩Bitmap的大小
+     *
+     * @param imageFile     图片文件
+     * @param requestWidth  压缩到想要的宽度
+     * @param requestHeight 压缩到想要的高度
+     * @return
+     */
+    public static Bitmap decodeBitmapFromFile(File imageFile, int requestWidth, int requestHeight) {
+        if (imageFile != null) {
+            return decodeBitmapFromFile(imageFile.getAbsolutePath(), requestWidth, requestHeight);
+        } else {
+            return null;
+        }
+    }
+
+    /**
+     * 压缩Bitmap的大小
+     *
+     * @param imagePath     图片文件路径
+     * @param requestWidth  压缩到想要的宽度
+     * @param requestHeight 压缩到想要的高度
+     * @return
+     */
+    public static Bitmap decodeBitmapFromFile(String imagePath, int requestWidth, int requestHeight) {
+        if (!TextUtils.isEmpty(imagePath)) {
+            if (requestWidth <= 0 || requestHeight <= 0) {
+                Bitmap bitmap = BitmapFactory.decodeFile(imagePath);
+                return bitmap;
+            }
+            BitmapFactory.Options options = new BitmapFactory.Options();
+            options.inJustDecodeBounds = true;//不加载图片到内存，仅获得图片宽高
+            BitmapFactory.decodeFile(imagePath, options);
+            options.inSampleSize = calculateInSampleSize(options, requestWidth, requestHeight); //计算获取新的采样率
+            options.inJustDecodeBounds = false;
+            return BitmapFactory.decodeFile(imagePath, options);
+
+        } else {
+            return null;
+        }
+    }
+
+    /**
      * Decode and sample down a bitmap from resources to the requested width and height.
      *
      * @param res       The resources object containing the image data
@@ -72,7 +119,7 @@ public class BitmapUtils {
      * @return A bitmap sampled down from the original with the same aspect ratio and dimensions
      * that are equal to or greater than the requested width and height
      */
-    public static Bitmap decodeSampledBitmapFromResource(Resources res, int resId, int reqWidth, int reqHeight) {
+    public static Bitmap decodeBitmapFromResource(Resources res, int resId, int reqWidth, int reqHeight) {
 
         // BEGIN_INCLUDE (read_bitmap_dimensions)
         // First decode with inJustDecodeBounds=true to check dimensions
@@ -90,30 +137,6 @@ public class BitmapUtils {
     }
 
     /**
-     * Decode and sample down a bitmap from a file to the requested width and height.
-     *
-     * @param filename  The full path of the file to decode
-     * @param reqWidth  The requested width of the resulting bitmap
-     * @param reqHeight The requested height of the resulting bitmap
-     * @return A bitmap sampled down from the original with the same aspect ratio and dimensions
-     * that are equal to or greater than the requested width and height
-     */
-    public static Bitmap decodeSampledBitmapFromFile(String filename, int reqWidth, int reqHeight) {
-
-        // First decode with inJustDecodeBounds=true to check dimensions
-        final BitmapFactory.Options options = new BitmapFactory.Options();
-        options.inJustDecodeBounds = true;
-        BitmapFactory.decodeFile(filename, options);
-
-        // Calculate inSampleSize
-        options.inSampleSize = calculateInSampleSize(options, reqWidth, reqHeight);
-
-        // Decode bitmap with inSampleSize set
-        options.inJustDecodeBounds = false;
-        return BitmapFactory.decodeFile(filename, options);
-    }
-
-    /**
      * Decode and sample down a bitmap from a file input stream to the requested width and height.
      *
      * @param fileDescriptor The file descriptor to read from
@@ -122,7 +145,7 @@ public class BitmapUtils {
      * @return A bitmap sampled down from the original with the same aspect ratio and dimensions
      * that are equal to or greater than the requested width and height
      */
-    public static Bitmap decodeSampledBitmapFromDescriptor(FileDescriptor fileDescriptor, int reqWidth, int reqHeight) {
+    public static Bitmap decodeBitmapFromDescriptor(FileDescriptor fileDescriptor, int reqWidth, int reqHeight) {
 
         // First decode with inJustDecodeBounds=true to check dimensions
         final BitmapFactory.Options options = new BitmapFactory.Options();
@@ -139,6 +162,7 @@ public class BitmapUtils {
     }
 
     /**
+     * Google官方代码，计算合适的采样率
      * Calculate an inSampleSize for use in a {@link android.graphics.BitmapFactory.Options} object when decoding
      * bitmaps using the decode* methods from {@link android.graphics.BitmapFactory}. This implementation calculates
      * the closest inSampleSize that is a power of 2 and will result in the final decoded bitmap
