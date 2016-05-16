@@ -7,9 +7,13 @@ import android.graphics.Matrix;
 import android.media.ExifInterface;
 import android.text.TextUtils;
 
+import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.FileDescriptor;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 
 /**
  * Bitmap操作常用工具类
@@ -19,6 +23,52 @@ public class BitmapUtils {
 
     public final static String JPG_SUFFIX = ".jpg";
     public final static String TEMP_FILE_NAME = "temp";
+    private final static String TIME_FORMAT = "yyyyMMddHHmmss";
+
+    /**
+     * 将Bitmap保存到指定目录下
+     *
+     * @param bitmap
+     * @param folder
+     * @return
+     */
+    public static boolean saveToFile(Bitmap bitmap, File folder) {
+        String fileName = new SimpleDateFormat(TIME_FORMAT).format(new Date());//直接以当前时间戳作为文件名
+        return saveToFile(bitmap, folder, fileName);
+    }
+
+    /**
+     * 将Bitmap保存到指定目录下，并且指定好文件名
+     *
+     * @param bitmap
+     * @param folder
+     * @param fileName 指定的文件名包含后缀
+     * @return
+     */
+    public static boolean saveToFile(Bitmap bitmap, File folder, String fileName) {
+        if (bitmap != null) {
+            if (!folder.exists()) {
+                folder.mkdir();
+            }
+            File file = new File(folder, fileName + JPG_SUFFIX);
+            if (file.exists()) {
+                file.delete();
+            }
+            try {
+                file.createNewFile();
+                BufferedOutputStream bos = new BufferedOutputStream(new FileOutputStream(file));
+                bitmap.compress(Bitmap.CompressFormat.JPEG, 100, bos);
+                bos.flush();
+                bos.close();
+                return true;
+            } catch (IOException e) {
+                e.printStackTrace();
+                return false;
+            }
+        } else {
+            return false;
+        }
+    }
 
     /**
      * 获取图片的旋转角度
