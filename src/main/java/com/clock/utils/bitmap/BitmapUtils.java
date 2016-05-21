@@ -1,10 +1,14 @@
 package com.clock.utils.bitmap;
 
+import android.content.ContentResolver;
+import android.content.ContentValues;
+import android.content.Context;
 import android.content.res.Resources;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Matrix;
 import android.media.ExifInterface;
+import android.provider.MediaStore;
 import android.text.TextUtils;
 
 import java.io.BufferedOutputStream;
@@ -22,17 +26,35 @@ import java.util.Date;
 public class BitmapUtils {
 
     public final static String JPG_SUFFIX = ".jpg";
-    public final static String TEMP_FILE_NAME = "temp";
     private final static String TIME_FORMAT = "yyyyMMddHHmmss";
+
+    /**
+     * 显示图片到相册
+     *
+     * @param context
+     * @param imageFile 要保存的图片文件
+     */
+    public static void displayToGallery(Context context, File imageFile) {
+        if (imageFile == null || !imageFile.exists()) {
+            return;
+        }
+        ContentResolver contentResolver = context.getContentResolver();
+        ContentValues values = new ContentValues();
+        values.put(MediaStore.Images.Media.DATA, imageFile.getAbsolutePath());//图片的路径
+        values.put(MediaStore.Images.Media.MIME_TYPE, "image/jpeg");//设置图片类型
+        values.put(MediaStore.Images.Media.TITLE, imageFile.getName());//不包含后缀名
+        values.put(MediaStore.Images.Media.DISPLAY_NAME, imageFile.getName() + BitmapUtils.JPG_SUFFIX);//包含后缀名
+        contentResolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values);
+    }
 
     /**
      * 将Bitmap保存到指定目录下
      *
      * @param bitmap
      * @param folder
-     * @return
+     * @return 保存成功，返回其对应的File，保存失败则返回null
      */
-    public static boolean saveToFile(Bitmap bitmap, File folder) {
+    public static File saveToFile(Bitmap bitmap, File folder) {
         String fileName = new SimpleDateFormat(TIME_FORMAT).format(new Date());//直接以当前时间戳作为文件名
         return saveToFile(bitmap, folder, fileName);
     }
@@ -43,9 +65,9 @@ public class BitmapUtils {
      * @param bitmap
      * @param folder
      * @param fileName 指定的文件名包含后缀
-     * @return
+     * @return 保存成功，返回其对应的File，保存失败则返回null
      */
-    public static boolean saveToFile(Bitmap bitmap, File folder, String fileName) {
+    public static File saveToFile(Bitmap bitmap, File folder, String fileName) {
         if (bitmap != null) {
             if (!folder.exists()) {
                 folder.mkdir();
@@ -60,13 +82,13 @@ public class BitmapUtils {
                 bitmap.compress(Bitmap.CompressFormat.JPEG, 100, bos);
                 bos.flush();
                 bos.close();
-                return true;
+                return file;
             } catch (IOException e) {
                 e.printStackTrace();
-                return false;
+                return null;
             }
         } else {
-            return false;
+            return null;
         }
     }
 
