@@ -1,19 +1,22 @@
 package com.clock.utils.bitmap;
 
 import android.content.ContentResolver;
-import android.content.ContentValues;
 import android.content.Context;
+import android.content.Intent;
 import android.content.res.Resources;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Matrix;
 import android.media.ExifInterface;
+import android.net.Uri;
 import android.provider.MediaStore;
 import android.text.TextUtils;
+import android.util.Log;
 
 import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.FileDescriptor;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
@@ -25,6 +28,7 @@ import java.util.Date;
  */
 public class BitmapUtils {
 
+    private final static String TAG = BitmapUtils.class.getCanonicalName();
     public final static String JPG_SUFFIX = ".jpg";
     private final static String TIME_FORMAT = "yyyyMMddHHmmss";
 
@@ -32,19 +36,23 @@ public class BitmapUtils {
      * 显示图片到相册
      *
      * @param context
-     * @param imageFile 要保存的图片文件
+     * @param photoFile 要保存的图片文件
      */
-    public static void displayToGallery(Context context, File imageFile) {
-        if (imageFile == null || !imageFile.exists()) {
+    public static void displayToGallery(Context context, File photoFile) {
+        if (photoFile == null || !photoFile.exists()) {
             return;
         }
-        ContentResolver contentResolver = context.getContentResolver();
-        ContentValues values = new ContentValues();
-        values.put(MediaStore.Images.Media.DATA, imageFile.getAbsolutePath());//图片的路径
-        values.put(MediaStore.Images.Media.MIME_TYPE, "image/jpeg");//设置图片类型
-        values.put(MediaStore.Images.Media.TITLE, imageFile.getName());//不包含后缀名
-        values.put(MediaStore.Images.Media.DISPLAY_NAME, imageFile.getName() + BitmapUtils.JPG_SUFFIX);//包含后缀名
-        contentResolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values);
+        String photoPath = photoFile.getAbsolutePath();
+        String photoName = photoFile.getName();
+        // 其次把文件插入到系统图库
+        try {
+            ContentResolver contentResolver = context.getContentResolver();
+            MediaStore.Images.Media.insertImage(contentResolver, photoPath, photoName, null);
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        }
+        // 最后通知图库更新
+        context.sendBroadcast(new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE, Uri.parse("file://" + photoPath)));
     }
 
     /**
@@ -167,6 +175,8 @@ public class BitmapUtils {
      */
     public static Bitmap decodeBitmapFromFile(String imagePath, int requestWidth, int requestHeight) {
         if (!TextUtils.isEmpty(imagePath)) {
+            Log.i(TAG, "requestWidth: " + requestWidth);
+            Log.i(TAG, "requestHeight: " + requestHeight);
             if (requestWidth <= 0 || requestHeight <= 0) {
                 Bitmap bitmap = BitmapFactory.decodeFile(imagePath);
                 return bitmap;
@@ -174,7 +184,23 @@ public class BitmapUtils {
             BitmapFactory.Options options = new BitmapFactory.Options();
             options.inJustDecodeBounds = true;//不加载图片到内存，仅获得图片宽高
             BitmapFactory.decodeFile(imagePath, options);
+            Log.i(TAG, "original height: " + options.outHeight);
+            Log.i(TAG, "original width: " + options.outWidth);
+            if (options.outHeight == -1 || options.outWidth == -1) {
+                try {
+                    ExifInterface exifInterface = new ExifInterface(imagePath);
+                    int height = exifInterface.getAttributeInt(ExifInterface.TAG_IMAGE_LENGTH, ExifInterface.ORIENTATION_NORMAL);//获取图片的高度
+                    int width = exifInterface.getAttributeInt(ExifInterface.TAG_IMAGE_WIDTH, ExifInterface.ORIENTATION_NORMAL);//获取图片的宽度
+                    Log.i(TAG, "exif height: " + height);
+                    Log.i(TAG, "exif width: " + width);
+                    options.outWidth = width;
+                    options.outHeight = height;
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
             options.inSampleSize = calculateInSampleSize(options, requestWidth, requestHeight); //计算获取新的采样率
+            Log.i(TAG, "inSampleSize: " + options.inSampleSize);
             options.inJustDecodeBounds = false;
             return BitmapFactory.decodeFile(imagePath, options);
 
