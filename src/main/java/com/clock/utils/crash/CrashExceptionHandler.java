@@ -1,9 +1,8 @@
 package com.clock.utils.crash;
 
 import android.content.Context;
-import android.os.Environment;
 import android.os.Looper;
-import android.text.TextUtils;
+import android.util.Log;
 import android.widget.Toast;
 
 import com.clock.utils.common.SystemUtils;
@@ -32,22 +31,11 @@ import java.util.Date;
  */
 public class CrashExceptionHandler implements Thread.UncaughtExceptionHandler {
 
-    private static final SimpleDateFormat DATE_FORMAT = new SimpleDateFormat("yyyyMMddHHmm");
-    /**
-     * 默认存放闪退信息的文件夹名称
-     */
-    private static final String DEFAULT_CRASH_FOLDER_NAME = "Log";
-    /**
-     * appSD卡默认目录
-     */
-    private static final String DEFAULT_APP_FOLDER_NAME = "DefaultCrash";
+    private final static String TAG = CrashExceptionHandler.class.getSimpleName();
 
+    private static final SimpleDateFormat DATE_FORMAT = new SimpleDateFormat("yyyyMMddHHmm");
 
     private Context mApplicationContext;
-    /**
-     * app在SD卡上的主目录
-     */
-    private File mAppMainFolder;
     /**
      * 保存闪退日志的文件目录
      */
@@ -59,21 +47,11 @@ public class CrashExceptionHandler implements Thread.UncaughtExceptionHandler {
 
     /**
      * @param context
-     * @param appMainFolderName   app程序主目录名，配置后位于SD卡一级目录下
-     * @param crashInfoFolderName 闪退日志保存目录名，配置后位于 appMainFolderName 配置的一级目录下
+     * @param crashInfoFolder 保存闪退日志的文件夹目录
      */
-    public CrashExceptionHandler(Context context, String appMainFolderName, String crashInfoFolderName) {
+    public CrashExceptionHandler(Context context, File crashInfoFolder) {
         this.mApplicationContext = context.getApplicationContext();
-        if (!TextUtils.isEmpty(appMainFolderName)) {
-            this.mAppMainFolder = new File(Environment.getExternalStorageDirectory(), appMainFolderName);
-        } else {
-            this.mAppMainFolder = new File(Environment.getExternalStorageDirectory(), DEFAULT_APP_FOLDER_NAME);
-        }
-        if (!TextUtils.isEmpty(crashInfoFolderName)) {
-            this.mCrashInfoFolder = new File(mAppMainFolder, crashInfoFolderName);
-        } else {
-            this.mCrashInfoFolder = new File(mAppMainFolder, DEFAULT_CRASH_FOLDER_NAME);
-        }
+        this.mCrashInfoFolder = crashInfoFolder;
     }
 
     @Override
@@ -132,14 +110,16 @@ public class CrashExceptionHandler implements Thread.UncaughtExceptionHandler {
      * @param ex
      */
     private void saveCrashInfoToFile(Throwable ex) {
-        if (Environment.getExternalStorageState().equals(Environment.MEDIA_MOUNTED)) {
-            try {
-                if (!mAppMainFolder.exists()) {//app目录不存在则先创建目录
-                    mAppMainFolder.mkdirs();
-                }
-                if (!mCrashInfoFolder.exists()) {//闪退日志目录不存在则先创建闪退日志目录
-                    mCrashInfoFolder.mkdirs();
-                }
+        try {
+            if (mCrashInfoFolder == null) {
+                return;
+            }
+
+            if (!mCrashInfoFolder.exists()) {//闪退日志目录不存在则先创建闪退日志目录
+                mCrashInfoFolder.mkdirs();
+            }
+
+            if (mCrashInfoFolder.exists()) {
                 String timeStampString = DATE_FORMAT.format(new Date());//当先的时间格式化
                 String crashLogFileName = timeStampString + ".log";
                 File crashLogFile = new File(mCrashInfoFolder, crashLogFileName);
@@ -160,12 +140,15 @@ public class CrashExceptionHandler implements Thread.UncaughtExceptionHandler {
                 PrintWriter pw = new PrintWriter(new OutputStreamWriter(new FileOutputStream(crashLogFile.getAbsolutePath(), true)), true);
                 ex.printStackTrace(pw);//写入奔溃的日志信息
                 pw.close();
-            } catch (IOException e) {
-                e.printStackTrace();
-            } catch (Exception e) {
-                e.printStackTrace();
+
+            } else {
+                Log.e(TAG, "crash info folder create failure!!!");
             }
 
+        } catch (IOException e) {
+            e.printStackTrace();
+        } catch (Exception e) {
+            e.printStackTrace();
         }
     }
 
